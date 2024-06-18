@@ -4,7 +4,7 @@ FROM dim_customer
 WHERE customer = 'Atliq Exclusive' AND region = 'APAC';
 
 -- 2. Percentage of unique product increase in 2021 vs. 2020
-WITH cte AS (
+WITH product_counts AS (
     SELECT
         (SELECT COUNT(DISTINCT product_code) FROM fact_sales_monthly WHERE fiscal_year = 2020) AS unique_products_2020,
         (SELECT COUNT(DISTINCT product_code) FROM fact_sales_monthly WHERE fiscal_year = 2021) AS unique_products_2021
@@ -13,32 +13,34 @@ SELECT
     unique_products_2020,
     unique_products_2021,
     ((unique_products_2021 - unique_products_2020) / unique_products_2020 * 100) AS percentage_chg
-FROM cte;
+FROM product_counts;
 
 -- 3. Unique product counts for each segment, sorted in descending order
-SELECT segment, COUNT(DISTINCT product_code) AS product_count
+SELECT segment, 
+       COUNT(DISTINCT product_code) AS product_count
 FROM dim_product
 GROUP BY segment
 ORDER BY product_count DESC;
 
 -- 4. Segment with the most increase in unique products in 2021 vs. 2020
-WITH cte_2020 AS (
+WITH product_count_2020 AS (
     SELECT p.segment, COUNT(DISTINCT s.product_code) AS product_count_2020
     FROM fact_sales_monthly s
     JOIN dim_product p ON s.product_code = p.product_code
     WHERE fiscal_year = 2020
     GROUP BY p.segment
-), cte_2021 AS (
+), product_count_2021 AS (
     SELECT p.segment, COUNT(DISTINCT s.product_code) AS product_count_2021
     FROM fact_sales_monthly s
     JOIN dim_product p ON s.product_code = p.product_code
     WHERE fiscal_year = 2021
     GROUP BY p.segment
 )
-SELECT cte_2020.segment, cte_2020.product_count_2020, cte_2021.product_count_2021, 
-       (cte_2021.product_count_2021 - cte_2020.product_count_2020) AS difference
-FROM cte_2020
-JOIN cte_2021 ON cte_2020.segment = cte_2021.segment;
+SELECT c_2020.segment, c_2020.product_count_2020, c_2021.product_count_2021, 
+       (c_2021.product_count_2021 - c_2020.product_count_2020) AS difference
+FROM product_count_2020 c_2020
+JOIN product_count_2021 c_2021 
+ON c_2020.segment = c_2021.segment;
 
 -- 5. Products with highest and lowest manufacturing costs
 (SELECT m.product_code, p.product, m.manufacturing_cost
@@ -54,7 +56,7 @@ UNION
  LIMIT 1);
 
 -- 6. Top 5 customers with highest average pre-invoice discount percentage in 2021 in India
-WITH cte AS (
+WITH avg_discount AS (
     SELECT c.customer_code, 
            c.customer, 
            ROUND(AVG(pre.pre_invoice_discount_pct), 4) AS avg_pre_invoice_discount_pct
@@ -66,7 +68,7 @@ WITH cte AS (
 SELECT customer_code, 
        customer, 
        avg_pre_invoice_discount_pct
-FROM cte
+FROM avg_discount
 ORDER BY avg_pre_invoice_discount_pct DESC
 LIMIT 5;
 
@@ -89,7 +91,7 @@ GROUP BY year, month, month_name
 ORDER BY year, gross_sales_monthly_mln;
 
 -- 8. Quarter of 2020 with the maximum total sold quantity
-WITH cte AS (
+WITH quarterly_sales AS (
     SELECT 
         CASE
             WHEN MONTH(date) IN (1, 2, 3) THEN 'Q1'
@@ -102,31 +104,31 @@ WITH cte AS (
     WHERE fiscal_year = 2020
 )
 SELECT quarter, SUM(sold_quantity) AS total_sold_quantity
-FROM cte
+FROM quarterly_sales
 GROUP BY quarter
 ORDER BY total_sold_quantity DESC;
 
 -- 9. Channel with highest gross sales in 2021 and its percentage contribution
-WITH cte1 AS (
+WITH sales_data AS (
     SELECT c.channel, s.sold_quantity * g.gross_price AS gross_sales
     FROM fact_sales_monthly s
     JOIN fact_gross_price g ON s.product_code = g.product_code
     JOIN dim_customer c ON s.customer_code = c.customer_code
     WHERE s.fiscal_year = 2021
-), cte2 AS (
-    SELECT SUM(gross_sales) / 1000000 AS total_gross_sales_mln FROM cte1
-), cte3 AS (
+), total_sales AS (
+    SELECT SUM(gross_sales) / 1000000 AS total_gross_sales_mln FROM sales_data
+), channel_sales AS (
     SELECT channel, SUM(gross_sales) / 1000000 AS gross_sales_mln
-    FROM cte1
+    FROM sales_data
     GROUP BY channel
 )
 SELECT channel, 
        ROUND(gross_sales_mln, 2) AS gross_sales_mln, 
-       ROUND(gross_sales_mln / (SELECT total_gross_sales_mln FROM cte2) * 100, 2) AS percentage_contribution
-FROM cte3;
+       ROUND(gross_sales_mln / (SELECT total_gross_sales_mln FROM total_sales) * 100, 2) AS percentage_contribution
+FROM channel_sales;
 
 -- 10. Top 3 products in each division by total sold quantity in 2021
-WITH RankedProducts AS (
+WITH ranked_products AS (
     SELECT
         p.division,
         s.product_code,
@@ -139,6 +141,6 @@ WITH RankedProducts AS (
     GROUP BY p.division, s.product_code, p.product
 )
 SELECT division, product_code, product, total_sold_quantity, rank_order
-FROM RankedProducts
+FROM ranked_products
 WHERE rank_order <= 3
 ORDER BY division, rank_order;
