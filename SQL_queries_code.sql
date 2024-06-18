@@ -55,13 +55,17 @@ UNION
 
 -- 6. Top 5 customers with highest average pre-invoice discount percentage in 2021 in India
 WITH cte AS (
-    SELECT c.customer_code, c.customer, ROUND(AVG(pre.pre_invoice_discount_pct), 4) AS avg_pre_invoice_discount_pct
+    SELECT c.customer_code, 
+           c.customer, 
+           ROUND(AVG(pre.pre_invoice_discount_pct), 4) AS avg_pre_invoice_discount_pct
     FROM fact_pre_invoice_deductions pre
     JOIN dim_customer c ON pre.customer_code = c.customer_code
     WHERE c.market = 'India' AND pre.fiscal_year = 2021
     GROUP BY c.customer_code, c.customer
 )
-SELECT customer_code, customer, avg_pre_invoice_discount_pct
+SELECT customer_code, 
+       customer, 
+       avg_pre_invoice_discount_pct
 FROM cte
 ORDER BY avg_pre_invoice_discount_pct DESC
 LIMIT 5;
