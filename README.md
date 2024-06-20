@@ -67,7 +67,7 @@ This project demonstrated the ability to use SQL for extracting meaningful busin
 ## How to Use
 
 1. **SQL Queries**: The SQL queries used for each request are available in the [`sql_queries.sql`](https://github.com/jaiswal-ashutosh/SQL-Project-Consumer-Goods-Ad-Hoc-Analysis/blob/1cf6ba61e8c3bf90fe35aae74defaa99ccde2f21/SQL_queries_code.sql) file.
-2. **Presentation**: The presentation providing a detailed walkthrough of the insights can be found [here](#).
+2. **Presentation**: The presentation providing a detailed walkthrough of the insights can be found [here](https://github.com/jaiswal-ashutosh/SQL-Project-Consumer-Goods-Ad-Hoc-Analysis/blob/main/SQL%20Ad%20Hoc%20Request%20presentation%20.pptx).
 
 ## Contact
 
